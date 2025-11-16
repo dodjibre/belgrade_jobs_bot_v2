@@ -10,33 +10,25 @@ from datetime import datetime
 
 # ENV vars
 TOKEN = os.getenv("BOT_TOKEN")
-GOOGLE_CREDS = os.getenv("GOOGLE_CREDS")  # full JSON (Render supports multiline)
-SHEET_KEY = os.getenv("SHEET_KEY")        # Google Sheet key (npr "1SXz...")
-
-# ID gde zelis da saljes test poruke (tvoj Telegram id ili grupa)
-# Mozeš ostaviti prazan i ne koristiti funkciju slanja dok ne testiraš:
-TEST_CHAT_ID = os.getenv("TEST_CHAT_ID")  # npr "123456789"
+GOOGLE_CREDS = os.getenv("GOOGLE_CREDS")
+SHEET_KEY = os.getenv("SHEET_KEY")
+TEST_CHAT_ID = os.getenv("TEST_CHAT_ID")
 
 if not TOKEN:
     raise Exception("BOT_TOKEN env var missing")
-
 if not GOOGLE_CREDS:
     raise Exception("GOOGLE_CREDS env var missing")
-
 if not SHEET_KEY:
     raise Exception("SHEET_KEY env var missing")
 
-# Auth Google Sheets
+# Google auth
 creds_dict = json.loads(GOOGLE_CREDS)
-
 scope = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
 ]
-
 credentials = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 gc = gspread.authorize(credentials)
-
 sheet = gc.open_by_key(SHEET_KEY).sheet1
 
 bot = Bot(token=TOKEN)
@@ -60,18 +52,20 @@ async def send_test_message():
 async def watch_sheet_loop():
     last_len = 0
     while True:
+        print("Bot alive:", datetime.now())   # 🔥 heartbeat za Render
+
         try:
             rows = sheet.get_all_values()
             if len(rows) > last_len:
                 new_rows = rows[last_len:]
                 for r in new_rows:
-                    # prilagodi po kolona: ovde saljemo sve kolone spojene
                     msg = "🆕 Nova prijava:\n" + "\n".join(r)
                     if TEST_CHAT_ID:
                         await bot.send_message(chat_id=TEST_CHAT_ID, text=msg)
                 last_len = len(rows)
         except Exception as e:
             print("Sheet watch error:", e)
+
         await asyncio.sleep(10)
 
 
